@@ -24,3 +24,11 @@ PaddlePaddle Implementation for "[Only a Matter of Style: Age Transformation Usi
 ![](./exp_dir/inference_side_by_side/000002.jpg)
 ![](./exp_dir/inference_side_by_side/2468.jpg)
 ![](./exp_dir/inference_side_by_side/000013.jpg)
+
+## 运行预测
+下载官方的预训练模型放在checkpoints目录下，再到options目录下更改`test_options.py`中相应的模型、源图片和输出结果(`exp_dir`)路径，之后使用scripts/inference_side_by_side.py对一组图像进行预测。
+例如：
+```shell
+python scripts/inference_side_by_side.py
+```
+不用在终端使用`--`来指定参数，因为已经写在`test_options.py`中。
