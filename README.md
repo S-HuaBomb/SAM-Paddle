@@ -9,5 +9,12 @@ PaddlePaddle Implementation for "[Only a Matter of Style: Age Transformation Usi
 
 [SAM](https://github.com/yuval-alaluf/SAM) is the Official Implementation in PyTorch
 
+论文中官方实验结果：
 
 ![](https://github.com/yuval-alaluf/SAM/blob/master/docs/2195.jpg)
+
+官方(pytorch)代码复现结果：
+
+![](./exp_dir/inference_side_by_side/000002.jpg)
+![](./exp_dir/inference_side_by_side/2468.jpg)
+![](./exp_dir/inference_side_by_side/000013.jpg)
