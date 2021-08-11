@@ -5,9 +5,15 @@ PaddlePaddle Implementation for "[Only a Matter of Style: Age Transformation Usi
 
 验收标准： CelebA 人眼评估生成的图像（可参考论文中展示的生成图片 Figure 4，6，8）
 
+官方开源的代码和预训练模型：
+| Path | Description |
+| --- | --- | 
+[CODE: SAM](https://github.com/yuval-alaluf/SAM) | the Official Implementation in PyTorch 
+[MODEL: SAM](https://drive.google.com/file/d/1XyumF6_fdAxFmxpFcmPf-q84LU_22EMC/view?usp=sharing) | SAM trained on the FFHQ dataset for age transformation.
+
 ---
 
-[SAM](https://github.com/yuval-alaluf/SAM) is the Official Implementation in PyTorch
+
 
 论文中官方实验结果：
 
