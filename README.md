@@ -10,8 +10,8 @@ PaddlePaddle Implementation for "[Only a Matter of Style: Age Transformation Usi
 [SAM](https://github.com/yuval-alaluf/SAM) is the Official Implementation in PyTorch
 
 
-[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-fli4QJhz-1629644936768)(https://github.com/yuval-alaluf/SAM/blob/master/docs/2195.jpg)]
-9644936768)]
+![](img-fli4QJhz-1629644936768)(https://github.com/yuval-alaluf/SAM/blob/master/docs/2195.jpg)]
+9644936768)
 
 ### 训练
 请在 `configs/paths_config.py` 中定义训练和预测所需的数据路径和模型路径。
