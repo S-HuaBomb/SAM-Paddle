@@ -1,11 +1,11 @@
-import torch
-import torch.nn as nn
+import paddle
+import paddle.nn as nn
 
 from criteria.lpips.networks import get_network, LinLayers
 from criteria.lpips.utils import get_state_dict
 
 
-class LPIPS(nn.Module):
+class LPIPS(nn.Layer):
     r"""Creates a criterion that measures
     Learned Perceptual Image Patch Similarity (LPIPS).
     Arguments:
@@ -20,16 +20,16 @@ class LPIPS(nn.Module):
         super(LPIPS, self).__init__()
 
         # pretrained network
-        self.net = get_network(net_type).to("cuda")
+        self.net = get_network(net_type)  # .to("gpu")
 
         # linear layers
-        self.lin = LinLayers(self.net.n_channels_list).to("cuda")
-        self.lin.load_state_dict(get_state_dict(net_type, version))
+        self.lin = LinLayers(self.net.n_channels_list)  # .to("gpu")
+        self.lin.set_state_dict(get_state_dict(net_type, version))
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor):
+    def forward(self, x, y):
         feat_x, feat_y = self.net(x), self.net(y)
 
         diff = [(fx - fy) ** 2 for fx, fy in zip(feat_x, feat_y)]
         res = [l(d).mean((2, 3), True) for d, l in zip(diff, self.lin)]
 
-        return torch.sum(torch.cat(res, 0)) / x.shape[0]
+        return paddle.sum(paddle.concat(res, 0)) / x.shape[0]

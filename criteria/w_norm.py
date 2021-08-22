@@ -1,8 +1,9 @@
-import torch
-from torch import nn
+import paddle
+from paddle import nn
 
 
-class WNormLoss(nn.Module):
+
+class WNormLoss(nn.Layer):
 
 	def __init__(self, opts):
 		super(WNormLoss, self).__init__()
@@ -11,4 +12,4 @@ class WNormLoss(nn.Module):
 	def forward(self, latent, latent_avg=None):
 		if self.opts.start_from_latent_avg or self.opts.start_from_encoded_w_plus:
 			latent = latent - latent_avg
-		return torch.sum(latent.norm(2, dim=(1, 2))) / latent.shape[0]
+		return paddle.sum(latent.norm(2, axis=(1, 2))) / latent.shape[0]

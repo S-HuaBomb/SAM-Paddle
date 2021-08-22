@@ -1,5 +1,5 @@
 from abc import abstractmethod
-import torchvision.transforms as transforms
+import paddle.vision.transforms as transforms
 
 
 class TransformsConfig(object):

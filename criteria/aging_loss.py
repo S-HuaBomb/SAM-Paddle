@@ -1,20 +1,18 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
+import paddle
+from paddle import nn
+import paddle.nn.functional as F
 
 from configs.paths_config import model_paths
-from models.dex_vgg import VGG
+from convert_models.dex_vgg import VGG
 
 
-class AgingLoss(nn.Module):
+class AgingLoss(nn.Layer):
 
     def __init__(self, opts):
         super(AgingLoss, self).__init__()
         self.age_net = VGG()
-        ckpt = torch.load(model_paths['age_predictor'], map_location="cpu")['state_dict']
-        ckpt = {k.replace('-', '_'): v for k, v in ckpt.items()}
-        self.age_net.load_state_dict(ckpt)
-        self.age_net.cuda()
+        self.age_net.set_state_dict(paddle.load(model_paths['vgg_age_predictor']))
+        # self.age_net.cuda()
         self.age_net.eval()
         self.min_age = 0
         self.max_age = 100
@@ -22,9 +20,9 @@ class AgingLoss(nn.Module):
 
     def __get_predicted_age(self, age_pb):
         predict_age_pb = F.softmax(age_pb)
-        predict_age = torch.zeros(age_pb.size(0)).type_as(predict_age_pb)
-        for i in range(age_pb.size(0)):
-            for j in range(age_pb.size(1)):
+        predict_age = paddle.zeros([age_pb.shape[0]], dtype=predict_age_pb.dtype)  # .type_as(predict_age_pb)
+        for i in range(age_pb.shape[0]):
+            for j in range(age_pb.shape[1]):
                 predict_age[i] += j * predict_age_pb[i][j]
         return predict_age
 

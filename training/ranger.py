@@ -22,15 +22,16 @@
 # changed eps to 1e-5 as better default than 1e-8.
 
 import math
-import torch
-from torch.optim.optimizer import Optimizer
+import paddle
+# from torch.optim.optimizer import Optimizer
+from paddle.optimizer import Optimizer
 
 
 class Ranger(Optimizer):
 
 	def __init__(self, params, lr=1e-3,  # lr
 				 alpha=0.5, k=6, N_sma_threshhold=5,  # Ranger options
-				 betas=(.95, 0.999), eps=1e-5, weight_decay=0,  # Adam options
+				 betas=(.95, 0.999), epsilon=1e-5, weight_decay=0,  # Adam options
 				 use_gc=True, gc_conv_only=False
 				 # Gradient centralization on or off, applied to conv layers only or conv + fc layers
 				 ):
@@ -42,8 +43,8 @@ class Ranger(Optimizer):
 			raise ValueError(f'Invalid lookahead steps: {k}')
 		if not lr > 0:
 			raise ValueError(f'Invalid Learning Rate: {lr}')
-		if not eps > 0:
-			raise ValueError(f'Invalid eps: {eps}')
+		if not epsilon > 0:
+			raise ValueError(f'Invalid eps: {epsilon}')
 
 		# parameter comments:
 		# beta1 (momentum) of .95 seems to work better than .90...
@@ -51,9 +52,9 @@ class Ranger(Optimizer):
 		# In both cases, worth testing on your dataset (.90 vs .95, 4 vs 5) to make sure which works best for you.
 
 		# prep defaults and init torch.optim base
-		defaults = dict(lr=lr, alpha=alpha, k=k, step_counter=0, betas=betas, N_sma_threshhold=N_sma_threshhold,
-						eps=eps, weight_decay=weight_decay)
-		super().__init__(params, defaults)
+		defaults = dict(learning_rate=lr, alpha=alpha, k=k, step_counter=0, betas=betas, N_sma_threshhold=N_sma_threshhold,
+						epsilon=epsilon, weight_decay=weight_decay)
+		super().__init__(defaults, parameters=params)
 
 		# adjustable threshold
 		self.N_sma_threshhold = N_sma_threshhold
@@ -73,13 +74,13 @@ class Ranger(Optimizer):
 		self.gc_gradient_threshold = 3 if gc_conv_only else 1
 
 	def __setstate__(self, state):
-		super(Ranger, self).__setstate__(state)
+		super(Ranger, self).set_state_dict(state)   # __setstate__
 
 	def step(self, closure=None):
 		loss = None
 
 		# Evaluate averages and grad, update param tensors
-		for group in self.param_groups:
+		for group in self._parameter_list:  # param_groups
 
 			for p in group['params']:
 				if p.grad is None:
@@ -91,23 +92,23 @@ class Ranger(Optimizer):
 
 				p_data_fp32 = p.data.float()
 
-				state = self.state[p]  # get state dict for this param
+				state = self.state_dict[p]  # get state dict for this param
 
 				if len(state) == 0:  # if first time to run...init dictionary with our desired entries
 					# if self.first_run_check==0:
 					# self.first_run_check=1
 					# print("Initializing slow buffer...should not see this at load from saved model!")
 					state['step'] = 0
-					state['exp_avg'] = torch.zeros_like(p_data_fp32)
-					state['exp_avg_sq'] = torch.zeros_like(p_data_fp32)
+					state['exp_avg'] = paddle.zeros_like(p_data_fp32)
+					state['exp_avg_sq'] = paddle.zeros_like(p_data_fp32)
 
 					# look ahead weight storage now in state dict
-					state['slow_buffer'] = torch.empty_like(p.data)
+					state['slow_buffer'] = paddle.empty_like(p.data)
 					state['slow_buffer'].copy_(p.data)
 
 				else:
-					state['exp_avg'] = state['exp_avg'].type_as(p_data_fp32)
-					state['exp_avg_sq'] = state['exp_avg_sq'].type_as(p_data_fp32)
+					state['exp_avg'] = state['exp_avg'].astype(p_data_fp32.dtype)
+					state['exp_avg_sq'] = state['exp_avg_sq'].astype(p_data_fp32.dtype)
 
 				# begin computations
 				exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
@@ -115,7 +116,7 @@ class Ranger(Optimizer):
 
 				# GC operation for Conv layers and FC layers
 				if grad.dim() > self.gc_gradient_threshold:
-					grad.add_(-grad.mean(dim=tuple(range(1, grad.dim())), keepdim=True))
+					grad.add_(-grad.mean(axis=tuple(range(1, grad.dim())), keepdim=True))
 
 				state['step'] += 1
 

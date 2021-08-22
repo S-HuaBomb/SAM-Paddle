@@ -4,8 +4,9 @@ import time
 from tqdm import tqdm
 from PIL import Image
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
+
+import paddle
+from paddle.io import DataLoader
 
 import sys
 sys.path.append(".")
@@ -16,7 +17,11 @@ from datasets.inference_dataset import InferenceDataset
 from datasets.augmentations import AgeTransformer
 from utils.common import tensor2im, log_image
 from options.test_options import TestOptions
-from models.psp import pSp
+from convert_models.psp import pSp
+
+
+# set device
+paddle.set_device('gpu' if paddle.is_compiled_with_cuda() else 'cpu')  # just need to this to use gpu for net and data!
 
 
 def run():
@@ -26,14 +31,14 @@ def run():
 	os.makedirs(out_path_results, exist_ok=True)
 
 	# update test options with options used during training
-	ckpt = torch.load(test_opts.checkpoint_path, map_location='cpu')
+	ckpt = paddle.load(test_opts.checkpoint_path)
 	opts = ckpt['opts']
 	opts.update(vars(test_opts))
 	opts = Namespace(**opts)
 
 	net = pSp(opts)
 	net.eval()
-	net.cuda()
+	# net.cuda()
 
 	age_transformers = [AgeTransformer(target_age=age) for age in opts.target_age.split(',')]
 
@@ -60,10 +65,10 @@ def run():
 			break
 		batch_results = {}
 		for idx, age_transformer in enumerate(age_transformers):
-			with torch.no_grad():
-				input_age_batch = [age_transformer(img.cpu()).to('cuda') for img in input_batch]
-				input_age_batch = torch.stack(input_age_batch)
-				input_cuda = input_age_batch.cuda().float()
+			with paddle.no_grad():
+				input_age_batch = [age_transformer(img.cpu()) for img in input_batch]
+				input_age_batch = paddle.stack(input_age_batch)
+				input_cuda = input_age_batch.astype('float32')
 				tic = time.time()
 				result_batch = run_on_batch(input_cuda, net, opts)
 				toc = time.time()

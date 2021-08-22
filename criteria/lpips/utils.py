@@ -1,10 +1,11 @@
 from collections import OrderedDict
 
-import torch
+import paddle
+from configs.paths_config import model_paths
 
 
 def normalize_activation(x, eps=1e-10):
-    norm_factor = torch.sqrt(torch.sum(x ** 2, dim=1, keepdim=True))
+    norm_factor = paddle.sqrt(paddle.sum(x ** 2, axis=1, keepdim=True))
     return x / (norm_factor + eps)
 
 
@@ -14,10 +15,11 @@ def get_state_dict(net_type: str = 'alex', version: str = '0.1'):
         + f'master/lpips/weights/v{version}/{net_type}.pth'
 
     # download
-    old_state_dict = torch.hub.load_state_dict_from_url(
-        url, progress=True,
-        map_location=None if torch.cuda.is_available() else torch.device('cpu')
-    )
+    # old_state_dict = torch.hub.load_state_dict_from_url(
+    #     url, progress=True,
+    #     map_location=None if paddle.is_compiled_with_cuda() else 'cpu'
+    # )
+    old_state_dict = paddle.load(model_paths['alex'])
 
     # rename keys
     new_state_dict = OrderedDict()

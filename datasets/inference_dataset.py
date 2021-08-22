@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset
+from paddle.io import Dataset
 from PIL import Image
 from utils import data_utils
 
@@ -6,6 +6,7 @@ from utils import data_utils
 class InferenceDataset(Dataset):
 
 	def __init__(self, root=None, paths_list=None, opts=None, transform=None, return_path=False):
+		super().__init__()
 		if paths_list is None:
 			self.paths = sorted(data_utils.make_dataset(root))
 		else:

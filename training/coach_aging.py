@@ -4,11 +4,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('Agg')
 
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-import torch.nn.functional as F
+
+from paddle.io import DataLoader
+# from torch.utils.tensorboard import SummaryWriter
+
+import paddle
+from paddle import nn
+import paddle.nn.functional as F
 
 from utils import common, train_utils
 from criteria import id_loss, w_norm
@@ -17,7 +19,7 @@ from datasets.images_dataset import ImagesDataset
 from datasets.augmentations import AgeTransformer
 from criteria.lpips.lpips import LPIPS
 from criteria.aging_loss import AgingLoss
-from models.psp import pSp
+from convert_models.psp import pSp
 from training.ranger import Ranger
 
 
@@ -27,18 +29,25 @@ class Coach:
 
 		self.global_step = 0
 
-		self.device = 'cuda'
+		self.device = 'gpu'
 		self.opts.device = self.device
 
 		# Initialize network
-		self.net = pSp(self.opts).to(self.device)
+		self.net = pSp(self.opts)  # .to(self.device)
 
 		# Initialize loss
-		self.mse_loss = nn.MSELoss().to(self.device).eval()
+		self.mse_loss = nn.MSELoss()  # .to(self.device).eval()
+		self.mse_loss.eval()
 		if self.opts.lpips_lambda > 0:
-			self.lpips_loss = LPIPS(net_type='alex').to(self.device).eval()
+			self.lpips_loss = LPIPS(net_type='alex')  # .to(self.device).eval()
+			# self.lpips_loss.eval()
+			for name, param in self.lpips_loss.named_parameters():
+				param.trainable = False
 		if self.opts.id_lambda > 0:
-			self.id_loss = id_loss.IDLoss().to(self.device).eval()
+			self.id_loss = id_loss.IDLoss()  # .to(self.device).eval()
+			# self.id_loss.eval()
+			for name, param in self.id_loss.named_parameters():
+				param.trainable = False
 		if self.opts.w_norm_lambda > 0:
 			self.w_norm_loss = w_norm.WNormLoss(opts=self.opts)
 		if self.opts.aging_lambda > 0:
@@ -62,10 +71,8 @@ class Coach:
 
 		self.age_transformer = AgeTransformer(target_age=self.opts.target_age)
 
-		# Initialize logger
-		log_dir = os.path.join(opts.exp_dir, 'logs')
-		os.makedirs(log_dir, exist_ok=True)
-		self.logger = SummaryWriter(log_dir=log_dir)
+		self.log_dir = os.path.join(opts.exp_dir, 'logs')
+		os.makedirs(self.log_dir, exist_ok=True)
 
 		# Initialize checkpoint dir
 		self.checkpoint_dir = os.path.join(opts.exp_dir, 'checkpoints')
@@ -79,16 +86,18 @@ class Coach:
 		return y_hat, latent
 
 	def __set_target_to_source(self, x, input_ages):
-		return [torch.cat((img, age * torch.ones((1, img.shape[1], img.shape[2])).to(self.device)))
+		return [paddle.concat((img, age * paddle.ones((1, img.shape[1], img.shape[2]))))  # .to(self.device)))
 				for img, age in zip(x, input_ages)]
+
+	# set device
+	paddle.set_device('gpu' if paddle.is_compiled_with_cuda() else 'cpu')  # just need to this to use gpu for net and data!
 
 	def train(self):
 		self.net.train()
 		while self.global_step < self.opts.max_steps:
 			for batch_idx, batch in enumerate(self.train_dataloader):
 				x, y = batch
-				x, y = x.to(self.device).float(), y.to(self.device).float()
-				self.optimizer.zero_grad()
+				x, y = x.astype('float32'), y.astype('float32')
 
 				input_ages = self.aging_loss.extract_ages(x) / 100.
 
@@ -97,9 +106,9 @@ class Coach:
 				if no_aging:
 					x_input = self.__set_target_to_source(x=x, input_ages=input_ages)
 				else:
-					x_input = [self.age_transformer(img.cpu()).to(self.device) for img in x]
+					x_input = [self.age_transformer(img.cpu()) for img in x]  # .to(self.device)
 
-				x_input = torch.stack(x_input)
+				x_input = paddle.stack(x_input)
 				target_ages = x_input[:, -1, 0, 0]
 
 				# perform forward/backward pass on real images
@@ -112,10 +121,12 @@ class Coach:
 				loss.backward()
 
 				# perform cycle on generate images by setting the target ages to the original input ages
-				y_hat_clone = y_hat.clone().detach().requires_grad_(True)
-				input_ages_clone = input_ages.clone().detach().requires_grad_(True)
+				y_hat_clone = y_hat.clone().detach()
+				y_hat_clone.stop_gradient = False
+				input_ages_clone = input_ages.clone().detach()
+				input_ages_clone.stop_gradient = False
 				y_hat_inverse = self.__set_target_to_source(x=y_hat_clone, input_ages=input_ages_clone)
-				y_hat_inverse = torch.stack(y_hat_inverse)
+				y_hat_inverse = paddle.stack(y_hat_inverse)
 				reverse_target_ages = y_hat_inverse[:, -1, 0, 0]
 				y_recovered, latent_cycle = self.perform_forward_pass(y_hat_inverse)
 				loss, cycle_loss_dict, cycle_id_logs = self.calc_loss(x, y, y_recovered, latent_cycle,
@@ -125,6 +136,7 @@ class Coach:
 																	  data_type="cycle")
 				loss.backward()
 				self.optimizer.step()
+				self.optimizer.clear_grad()
 
 				# combine the logs of both forwards
 				for idx, cycle_log in enumerate(cycle_id_logs):
@@ -140,7 +152,6 @@ class Coach:
 
 				if self.global_step % self.opts.board_interval == 0:
 					self.print_metrics(loss_dict, prefix='train')
-					self.log_metrics(loss_dict, prefix='train')
 
 				# Validation related
 				val_loss_dict = None
@@ -167,8 +178,8 @@ class Coach:
 		agg_loss_dict = []
 		for batch_idx, batch in enumerate(self.test_dataloader):
 			x, y = batch
-			with torch.no_grad():
-				x, y = x.to(self.device).float(), y.to(self.device).float()
+			with paddle.no_grad():
+				x, y = x.astype('float32'), y.astype('float32')
 
 				input_ages = self.aging_loss.extract_ages(x) / 100.
 
@@ -177,9 +188,9 @@ class Coach:
 				if no_aging:
 					x_input = self.__set_target_to_source(x=x, input_ages=input_ages)
 				else:
-					x_input = [self.age_transformer(img.cpu()).to(self.device) for img in x]
+					x_input = [self.age_transformer(img.cpu()) for img in x]  # .to(self.device)
 
-				x_input = torch.stack(x_input)
+				x_input = paddle.stack(x_input)
 				target_ages = x_input[:, -1, 0, 0]
 
 				# perform forward/backward pass on real images
@@ -192,7 +203,7 @@ class Coach:
 
 				# perform cycle on generate images by setting the target ages to the original input ages
 				y_hat_inverse = self.__set_target_to_source(x=y_hat, input_ages=input_ages)
-				y_hat_inverse = torch.stack(y_hat_inverse)
+				y_hat_inverse = paddle.stack(y_hat_inverse)
 				reverse_target_ages = y_hat_inverse[:, -1, 0, 0]
 				y_recovered, latent_cycle = self.perform_forward_pass(y_hat_inverse)
 				loss, cycle_loss_dict, cycle_id_logs = self.calc_loss(x, y, y_recovered, latent_cycle,
@@ -219,17 +230,16 @@ class Coach:
 				return None  # Do not log, inaccurate in first batch
 
 		loss_dict = train_utils.aggregate_loss_dict(agg_loss_dict)
-		self.log_metrics(loss_dict, prefix='test')
 		self.print_metrics(loss_dict, prefix='test')
 
 		self.net.train()
 		return loss_dict
 
 	def checkpoint_me(self, loss_dict, is_best):
-		save_name = 'best_model.pt' if is_best else f'iteration_{self.global_step}.pt'
+		save_name = 'best_model.pdparams' if is_best else f'iteration_{self.global_step}.pdparams'
 		save_dict = self.__get_save_dict()
 		checkpoint_path = os.path.join(self.checkpoint_dir, save_name)
-		torch.save(save_dict, checkpoint_path)
+		paddle.save(save_dict, checkpoint_path)
 		with open(os.path.join(self.checkpoint_dir, 'timestamp.txt'), 'a') as f:
 			if is_best:
 				f.write('**Best**: Step - {}, '
@@ -242,7 +252,7 @@ class Coach:
 		if self.opts.train_decoder:
 			params += list(self.net.decoder.parameters())
 		if self.opts.optim_name == 'adam':
-			optimizer = torch.optim.Adam(params, lr=self.opts.learning_rate)
+			optimizer = paddle.optimizer.Adam(parameters=params, learning_rate=self.opts.learning_rate)
 		else:
 			optimizer = Ranger(params, lr=self.opts.learning_rate)
 		return optimizer
@@ -274,7 +284,7 @@ class Coach:
 		if self.opts.id_lambda > 0:
 			weights = None
 			if self.opts.use_weighted_id_loss:  # compute weighted id loss only on forward pass
-				age_diffs = torch.abs(target_ages - input_ages)
+				age_diffs = paddle.abs(target_ages - input_ages)
 				weights = train_utils.compute_cosine_weights(x=age_diffs)
 			loss_id, sim_improvement, id_logs = self.id_loss(y_hat, y, x, label=data_type, weights=weights)
 			loss_dict[f'loss_id_{data_type}'] = float(loss_id)
@@ -317,10 +327,6 @@ class Coach:
 			loss = loss * self.opts.cycle_lambda
 		return loss, loss_dict, id_logs
 
-	def log_metrics(self, metrics_dict, prefix):
-		for key, value in metrics_dict.items():
-			self.logger.add_scalar(f'{prefix}/{key}', value, self.global_step)
-
 	def print_metrics(self, metrics_dict, prefix):
 		print(f'Metrics for {prefix}, step {self.global_step}')
 		for key, value in metrics_dict.items():
@@ -347,9 +353,9 @@ class Coach:
 		if log_latest:
 			step = 0
 		if subscript:
-			path = os.path.join(self.logger.log_dir, name, '{}_{:04d}.jpg'.format(subscript, step))
+			path = os.path.join(self.log_dir, name, '{}_{:04d}.jpg'.format(subscript, step))
 		else:
-			path = os.path.join(self.logger.log_dir, name, '{:04d}.jpg'.format(step))
+			path = os.path.join(self.log_dir, name, '{:04d}.jpg'.format(step))
 		os.makedirs(os.path.dirname(path), exist_ok=True)
 		fig.savefig(path)
 		plt.close(fig)

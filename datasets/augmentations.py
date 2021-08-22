@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import paddle
 
 
 class AgeTransformer(object):
@@ -14,7 +14,7 @@ class AgeTransformer(object):
 	def add_aging_channel(self, img):
 		target_age = self.__get_target_age()
 		target_age = int(target_age) / 100  # normalize aging amount to be in range [-1,1]
-		img = torch.cat((img, target_age * torch.ones((1, img.shape[1], img.shape[2]))))
+		img = paddle.concat((img, target_age * paddle.ones((1, img.shape[1], img.shape[2]))))
 		return img
 
 	def __get_target_age(self):

@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from configs.paths_config import project_root, infer_exp_dir, best_model_path
 
 
 class TestOptions:
@@ -10,16 +11,15 @@ class TestOptions:
 
     def initialize(self):
         # arguments for inference script
-        root = "E:/src_code/shb/SAM"
         self.parser.add_argument('--exp_dir', type=str,
-                                 default=os.path.join(root, "exp_dir"),
+                                 default=infer_exp_dir,
                                  help='Path to experiment output directory')
-        self.parser.add_argument('--checkpoint_path',
-                                 default=os.path.join(root, "checkpoints/sam_ffhq_aging.pt"),
+        self.parser.add_argument('--checkpoint_path',  # 指定 best_model.pdparams
+                                 default=best_model_path,
                                  type=str,
                                  help='Path to pSp model checkpoint')
-        self.parser.add_argument('--data_path', type=str,
-                                 default=os.path.join(root, "images"),
+        self.parser.add_argument('--data_path', type=str,  # 测试输入的人脸图像所在文件夹
+                                 default=os.path.join(project_root, "images/sample"),
                                  help='Path to directory of images to evaluate')
         self.parser.add_argument('--couple_outputs', action='store_true',
                                  help='Whether to also save inputs + outputs side-by-side')
