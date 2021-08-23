@@ -58,25 +58,25 @@ class IDLoss(nn.Layer):
 
         return total_loss / count, sim_improvement / count, id_logs
 
-def main(x0):
-    # There are 1 inputs.
-    # x0: shape-[1, 3, 112, 112], type-float32.
-    paddle.disable_static()
-    params = paddle.load(model_paths['ir_se50_backbone'])
-    model = Backbone()
-    model.set_state_dict(params)
-    model.eval()
-    out = model(x0)
-    return out
-
-
-np.random.seed(42)
-x0 = np.random.randn(1, 3, 112, 112)
-
-if __name__ == '__main__':
-    xp = paddle.to_tensor(x0, dtype='float32')
-    out_p = main(xp)
-    print(out_p)
+# def main(x0):
+#     # There are 1 inputs.
+#     # x0: shape-[1, 3, 112, 112], type-float32.
+#     paddle.disable_static()
+#     params = paddle.load(model_paths['ir_se50_backbone'])
+#     model = Backbone()
+#     model.set_state_dict(params)
+#     model.eval()
+#     out = model(x0)
+#     return out
+#
+#
+# np.random.seed(42)
+# x0 = np.random.randn(1, 3, 112, 112)
+#
+# if __name__ == '__main__':
+#     xp = paddle.to_tensor(x0, dtype='float32')
+#     out_p = main(xp)
+#     print(out_p)
 
     #
 # def main(x0):

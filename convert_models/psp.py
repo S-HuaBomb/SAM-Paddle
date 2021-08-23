@@ -43,12 +43,12 @@ class pSp(nn.Layer):
         else:  # 训练加载
             if self.opts.train_from_sam_ckpt:
                 print(f'Loading encoder weights from: {self.opts.sam_encoder}')
-                self.encoder.load_state_dict(paddle.load(self.opts.sam_encoder))
+                self.encoder.set_state_dict(paddle.load(self.opts.sam_encoder))
                 print(f'Loading decoder weights from: {self.opts.sam_decoder}')
-                self.decoder.load_state_dict(paddle.load(self.opts.sam_decoder))
+                self.decoder.set_state_dict(paddle.load(self.opts.sam_decoder))
                 if self.opts.start_from_encoded_w_plus:
                     self.pretrained_encoder = self.__get_pretrained_psp_encoder()
-                    self.pretrained_encoder.load_state_dict(paddle.load(self.opts.sam_psp3_encoder))
+                    self.pretrained_encoder.set_state_dict(paddle.load(self.opts.sam_psp3_encoder))
             else:
                 print('Loading encoders weights from irse50!')
                 encoder_ckpt = paddle.load(model_paths['psp_encoder'])
@@ -65,7 +65,10 @@ class pSp(nn.Layer):
 
                 if self.opts.start_from_encoded_w_plus:
                     self.pretrained_encoder = self.__load_pretrained_psp_encoder()
-                    self.pretrained_encoder.eval()
+
+            # self.pretrained_encoder.eval()
+            for name, param in self.pretrained_encoder.named_parameters():
+                param.trainable = False
             latent_avg = paddle.load(self.opts.latent_avg)
             self.__load_latent_avg(latent_avg, repeat=self.n_styles)
 
