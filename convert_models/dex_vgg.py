@@ -39,31 +39,30 @@ class VGG(nn.Layer):
             self.pool5 = nn.AvgPool2D(kernel_size=2, stride=2)
 
     def forward(self, x):
-        out = {}
-        out['r11'] = F.relu(self.conv1_1(x))
-        out['r12'] = F.relu(self.conv1_2(out['r11']))
-        out['p1'] = self.pool1(out['r12'])
-        out['r21'] = F.relu(self.conv2_1(out['p1']))
-        out['r22'] = F.relu(self.conv2_2(out['r21']))
-        out['p2'] = self.pool2(out['r22'])
-        out['r31'] = F.relu(self.conv3_1(out['p2']))
-        out['r32'] = F.relu(self.conv3_2(out['r31']))
-        out['r33'] = F.relu(self.conv3_3(out['r32']))
-        out['p3'] = self.pool3(out['r33'])
-        out['r41'] = F.relu(self.conv4_1(out['p3']))
-        out['r42'] = F.relu(self.conv4_2(out['r41']))
-        out['r43'] = F.relu(self.conv4_3(out['r42']))
-        out['p4'] = self.pool4(out['r43'])
-        out['r51'] = F.relu(self.conv5_1(out['p4']))
-        out['r52'] = F.relu(self.conv5_2(out['r51']))
-        out['r53'] = F.relu(self.conv5_3(out['r52']))
-        out['p5'] = self.pool5(out['r53'])
-        batch_size = out['p5'].shape[0]
-        out['p5'] = paddle.reshape(out['p5'], (batch_size, -1))
-        out['fc6'] = F.relu(self.fc6(out['p5']))
-        out['fc7'] = F.relu(self.fc7(out['fc6']))
-        out['fc8'] = self.fc8_101(out['fc7'])
-        return out
+        x = F.relu(self.conv1_1(x))
+        x = F.relu(self.conv1_2(x))
+        x = self.pool1(x)
+        x = F.relu(self.conv2_1(x))
+        x = F.relu(self.conv2_2(x))
+        x = self.pool2(x)
+        x = F.relu(self.conv3_1(x))
+        x = F.relu(self.conv3_2(x))
+        x = F.relu(self.conv3_3(x))
+        x = self.pool3(x)
+        x = F.relu(self.conv4_1(x))
+        x = F.relu(self.conv4_2(x))
+        x = F.relu(self.conv4_3(x))
+        x = self.pool4(x)
+        x = F.relu(self.conv5_1(x))
+        x = F.relu(self.conv5_2(x))
+        x = F.relu(self.conv5_3(x))
+        x = self.pool5(x)
+        batch_size = x.shape[0]
+        x = paddle.reshape(x, (batch_size, -1))
+        x = F.relu(self.fc6(x))
+        x = F.relu(self.fc7(x))
+        x = self.fc8_101(x)
+        return x
 
 
 # def convert(model):

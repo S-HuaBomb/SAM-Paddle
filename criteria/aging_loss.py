@@ -28,7 +28,7 @@ class AgingLoss(nn.Layer):
 
     def extract_ages(self, x):
         x = F.interpolate(x, size=(224, 224), mode='bilinear')
-        predict_age_pb = self.age_net(x)['fc8']
+        predict_age_pb = self.age_net(x)
         predicted_age = self.__get_predicted_age(predict_age_pb)
         return predicted_age
 
