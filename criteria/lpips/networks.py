@@ -28,15 +28,6 @@ class Identity(nn.Layer):
     Args:
         args: any argument (unused)
         kwargs: any keyword argument (unused)
-
-    Examples::
-
-        >>> m = Identity(54, unused_argument1=0.1, unused_argument2=False)
-        >>> input = torch.randn(128, 20)
-        >>> output = m(input)
-        >>> print(output.size())
-        torch.Size([128, 20])
-
     """
     def __init__(self, *args, **kwargs):
         super(Identity, self).__init__()
@@ -45,17 +36,12 @@ class Identity(nn.Layer):
         return input
 
 
-class LinLayers(nn.LayerList):
+class LinLayers(nn.Layer):
     def __init__(self, n_channels_list: Sequence[int]):
-        super(LinLayers, self).__init__([
-            nn.Sequential(
-                Identity(),          ###################################
-                nn.Conv2D(nc, 1, 1, 1, 0, bias_attr=False)
-            ) for nc in n_channels_list
-        ])
+        super(LinLayers, self).__init__()
+        layers = [nn.Conv2D(nc, 1, 1, 1, 0, bias_attr=False) for nc in n_channels_list]
 
-        for param in self.parameters():
-            param.stop_gradient = False
+        self.model = nn.Sequential(*layers)
 
 
 class BaseNet(nn.Layer):
@@ -69,8 +55,8 @@ class BaseNet(nn.Layer):
             'std', paddle.to_tensor([.458, .448, .450]).reshape((1, 3, 1, 1)))
 
     def set_requires_grad(self, state: bool):
-        for param in chain(self.parameters(), self.buffers()):
-            param.stop_gradient = state
+        for param in chain(self.parameters()):
+            param.trainable = state
 
     def z_score(self, x: paddle.Tensor):
         return (x - self.mean) / self.std

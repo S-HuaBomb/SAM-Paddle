@@ -18,12 +18,12 @@ class AgingLoss(nn.Layer):
         self.max_age = 100
         self.opts = opts
 
+        self.age = paddle.arange(self.min_age,self.max_age+1,dtype=paddle.float32)
+
+
     def __get_predicted_age(self, age_pb):
         predict_age_pb = F.softmax(age_pb)
-        predict_age = paddle.zeros([age_pb.shape[0]], dtype=predict_age_pb.dtype)  # .type_as(predict_age_pb)
-        for i in range(age_pb.shape[0]):
-            for j in range(age_pb.shape[1]):
-                predict_age[i] += j * predict_age_pb[i][j]
+        predict_age = predict_age_pb.matmul(self.age)
         return predict_age
 
     def extract_ages(self, x):

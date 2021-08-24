@@ -30,6 +30,6 @@ class LPIPS(nn.Layer):
         feat_x, feat_y = self.net(x), self.net(y)
 
         diff = [(fx - fy) ** 2 for fx, fy in zip(feat_x, feat_y)]
-        res = [l(d).mean((2, 3), True) for d, l in zip(diff, self.lin)]
+        res = [l(d).mean((2, 3), True) for d, l in zip(diff, self.lin.model.sublayers())]
 
         return paddle.sum(paddle.concat(res, 0)) / x.shape[0]

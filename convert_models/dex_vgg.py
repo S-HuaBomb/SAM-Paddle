@@ -57,8 +57,7 @@ class VGG(nn.Layer):
         x = F.relu(self.conv5_2(x))
         x = F.relu(self.conv5_3(x))
         x = self.pool5(x)
-        batch_size = x.shape[0]
-        x = paddle.reshape(x, (batch_size, -1))
+        x = x.reshape((x.shape[0], -1))
         x = F.relu(self.fc6(x))
         x = F.relu(self.fc7(x))
         x = self.fc8_101(x)
