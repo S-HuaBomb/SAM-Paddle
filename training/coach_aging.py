@@ -58,8 +58,6 @@ class Coach:
 
         if self.opts.aging_lambda > 0:
             self.aging_loss = AgingLoss(self.opts)
-            for name, param in self.aging_loss.named_parameters():
-                param.trainable = False
 
         # Initialize optimizer
         self.optimizer = self.configure_optimizers()
@@ -102,7 +100,7 @@ class Coach:
         while self.global_step < self.opts.max_steps:
             for batch_idx, batch in enumerate(self.train_dataloader):
                 x, y = batch
-                x, y = x.astype('float32'), y.astype('float32')
+                x, y = x.astype(paddle.float32), y.astype(paddle.float32)
 
                 input_ages = self.aging_loss.extract_ages(x) / 100.
 
@@ -184,7 +182,7 @@ class Coach:
         for batch_idx, batch in enumerate(self.test_dataloader):
             x, y = batch
             with paddle.no_grad():
-                x, y = x.astype('float32'), y.astype('float32')
+                x, y = x.astype(paddle.float32), y.astype(paddle.float32)
 
                 input_ages = self.aging_loss.extract_ages(x) / 100.
 

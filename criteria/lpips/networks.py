@@ -36,12 +36,17 @@ class Identity(nn.Layer):
         return input
 
 
-class LinLayers(nn.Layer):
+class LinLayers(nn.LayerList):
     def __init__(self, n_channels_list: Sequence[int]):
-        super(LinLayers, self).__init__()
-        layers = [nn.Conv2D(nc, 1, 1, 1, 0, bias_attr=False) for nc in n_channels_list]
+        super(LinLayers, self).__init__([
+            nn.Sequential(
+                Identity(),          ###################################
+                nn.Conv2D(nc, 1, 1, 1, 0, bias_attr=False)
+            ) for nc in n_channels_list
+        ])
 
-        self.model = nn.Sequential(*layers)
+        for param in self.parameters():
+            param.stop_gradient = True
 
 
 class BaseNet(nn.Layer):
@@ -54,7 +59,7 @@ class BaseNet(nn.Layer):
         self.register_buffer(
             'std', paddle.to_tensor([.458, .448, .450]).reshape((1, 3, 1, 1)))
 
-    def set_requires_grad(self, state: bool):
+    def set_stop_gradient(self, state: bool):
         for param in chain(self.parameters()):
             param.trainable = state
 
@@ -82,7 +87,7 @@ class SqueezeNet(BaseNet):
         self.target_layers = [2, 5, 8, 10, 11, 12, 13]
         self.n_channels_list = [64, 128, 256, 384, 384, 512, 512]
 
-        self.set_requires_grad(False)
+        self.set_stop_gradient(False)
 
 
 class AlexNetP(nn.Layer):
@@ -133,7 +138,7 @@ class AlexNet(BaseNet):
         self.target_layers = [2, 5, 8, 10, 12]
         self.n_channels_list = [64, 192, 384, 256, 256]
 
-        self.set_requires_grad(False)
+        self.set_stop_gradient(True)
 
 
 class VGG16(BaseNet):
@@ -144,4 +149,4 @@ class VGG16(BaseNet):
         self.target_layers = [4, 9, 16, 23, 30]
         self.n_channels_list = [64, 128, 256, 512, 512]
 
-        self.set_requires_grad(False)
+        self.set_stop_gradient(False)
